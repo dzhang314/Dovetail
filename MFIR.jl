@@ -7,9 +7,11 @@ using SIMD: Vec
 ######################################################################## MFIR OPERATIONS
 
 
-export MFIROperation, MFIR_NEG, MFIR_ADD, MFIR_TWO_SUM, MFIR_FAST_TWO_SUM,
+export MFIROperation, MFIR_NEG,
+    MFIR_ADD, MFIR_TWO_SUM, MFIR_FAST_TWO_SUM,
     MFIR_SUB, MFIR_TWO_DIFF, MFIR_FAST_TWO_DIFF,
-    MFIR_SQR, MFIR_MUL, MFIR_FMA, MFIR_TWO_SQR, MFIR_TWO_PROD,
+    MFIR_SQR, MFIR_MUL, MFIR_FMA, MFIR_FMS, MFIR_FNMA, MFIR_FNMS,
+    MFIR_TWO_SQR, MFIR_TWO_PROD,
     MFIR_INV, MFIR_DIV, MFIR_SQRT, MFIR_INV_SQRT,
     num_inputs, num_outputs
 
@@ -25,6 +27,9 @@ export MFIROperation, MFIR_NEG, MFIR_ADD, MFIR_TWO_SUM, MFIR_FAST_TWO_SUM,
     MFIR_SQR
     MFIR_MUL
     MFIR_FMA
+    MFIR_FMS
+    MFIR_FNMA
+    MFIR_FNMS
     MFIR_TWO_SQR
     MFIR_TWO_PROD
     MFIR_INV
@@ -38,7 +43,7 @@ end
     if ((op == MFIR_NEG) | (op == MFIR_SQR) | (op == MFIR_TWO_SQR) |
         (op == MFIR_INV) | (op == MFIR_SQRT) | (op == MFIR_INV_SQRT))
         return 1
-    elseif (op == MFIR_FMA)
+    elseif ((op == MFIR_FMA) | (op == MFIR_FMS) | (op == MFIR_FNMA) | (op == MFIR_FNMS))
         return 3
     else
         return 2
@@ -107,7 +112,8 @@ end
     op = insn.op
     x, y, z = insn.args
     if ((op == MFIR_ADD) | (op == MFIR_TWO_SUM) |
-        (op == MFIR_MUL) | (op == MFIR_FMA) | (op == MFIR_TWO_PROD))
+        (op == MFIR_MUL) | (op == MFIR_TWO_PROD) |
+        (op == MFIR_FMA) | (op == MFIR_FMS) | (op == MFIR_FNMA) | (op == MFIR_FNMS))
         return MFIRInstruction(op, (minmax(x, y)..., z))
     else
         return insn
@@ -269,6 +275,12 @@ end
         v[reg] = v[x] * v[y]
     elseif op == MFIR_FMA
         v[reg] = fma(v[x], v[y], v[z])
+    elseif op == MFIR_FMS
+        v[reg] = fma(v[x], v[y], -v[z])
+    elseif op == MFIR_FNMA
+        v[reg] = fma(-v[x], v[y], v[z])
+    elseif op == MFIR_FNMS
+        v[reg] = fma(-v[x], v[y], -v[z])
     elseif op == MFIR_TWO_SQR
         store_pair!(v, reg, two_prod(v[x], v[x]))
     elseif op == MFIR_TWO_PROD
@@ -510,6 +522,9 @@ Base.:+(A::FLOPCounter, B::FLOPCounter) = FLOPCounter(
     op == MFIR_SQR ? FLOPCounter(0, 0, 1, 0, 0, 0, 0, 0) :
     op == MFIR_MUL ? FLOPCounter(0, 0, 1, 0, 0, 0, 0, 0) :
     op == MFIR_FMA ? FLOPCounter(0, 0, 0, 1, 0, 0, 0, 0) :
+    op == MFIR_FMS ? FLOPCounter(0, 0, 0, 1, 0, 0, 0, 0) :
+    op == MFIR_FNMA ? FLOPCounter(0, 0, 0, 1, 0, 0, 0, 0) :
+    op == MFIR_FNMS ? FLOPCounter(0, 0, 0, 1, 0, 0, 0, 0) :
     op == MFIR_TWO_SQR ? FLOPCounter(0, 0, 1, 1, 0, 0, 0, 0) :
     op == MFIR_TWO_PROD ? FLOPCounter(0, 0, 1, 1, 0, 0, 0, 0) :
     op == MFIR_INV ? FLOPCounter(0, 0, 0, 0, 1, 0, 0, 0) :
